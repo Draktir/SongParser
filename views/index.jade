@@ -1,0 +1,15 @@
+extends layout
+
+block content
+  h1= title
+  form(action="/search", method="post")
+    label.add-on(for="query") Enter your search query:
+    input(type="text", name="query")
+    p
+    select(name="filter")
+      option(value="1") Title
+      option(value="2") Composer
+      option(value="3") Style
+    p
+    button(type="submit") Submit
+  p
