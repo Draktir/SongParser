@@ -1,8 +1,3 @@
-
-/**
- * session-demo app.js
- */
-
 //process.env.NODE_ENV = 'development';
 
 var express = require('express');
@@ -33,11 +28,21 @@ if ('development' == app.get('env')) {
   app.use(express.errorHandler());
 }
 
+var createLinkHandlers = function() {
+	routes.getSongs().toArray(function(err, docs) {
+		if (err) throw err;
+		for (var i = 0; i < docs.length; i++) {
+			console.log("Creating song: " + docs[i]['title']);
+			// TODO: create link
+		}
+	});
+}
+
+routes.connectToDBs(createLinkHandlers);
+
 app.get('/', routes.index);
 app.post('/search', routes.search);
 app.post('/song', routes.song);
-
-app.get('/' + songName, routes.makeSongHandler(songName)
 
 http.createServer(app).listen(app.get('port'), function(){
   console.log('Express server listening on port ' + app.get('port') +

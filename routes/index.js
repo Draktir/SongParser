@@ -1,12 +1,19 @@
-var asyncFinished = false;
 var MongoClient = require('mongodb').MongoClient;
 var Server = require('mongodb').Server;
-//var mongo = new MongoClient(); 
 var songCollection;
 var searchQuery;
 var searchFilter;
 var searchResults; // cursor
+var idArray = [];
 var resultArray = [];
+
+function connectToDBs(callback) {
+	MongoClient.connect('mongodb://localhost/iRealSongs/', function(err, db) {
+		if (err) throw err;
+		songColletion = db.collection('songs');
+		callback();
+	});
+}
 
 function index(req, res) {
 	resultsArray = [];
@@ -17,9 +24,6 @@ function index(req, res) {
 function search(req, res) {
 	searchQuery = req.body.query.split(' ');
 	searchFilter = req.body.filter;
-	
-	console.log(searchFilter);
-	
 	var query;
 	
 	if (req.body.query.length > 0) {
@@ -116,13 +120,33 @@ function song(req, res) {
 	// TODO: should render selected song 
 }
 
-function makeSongHandler(songName) {
-	handler = function(req, res) {
-		
-	}
+function getSongs() {
+	MongoClient.connect('mongodb://localhost/iRealSongs/', function(err, db) {
+		if (err) throw err;
+		songCollection = db.collection('songs');
+		cursor = songCollection.find();
+		cursor.each(function(err, doc) {
+			if (doc == null) return idArray;
+			idArray.push(doc['_id']);
+		});
+	});
 }
 
+function makeSongHandler(songID) {
+	console.log("Creating handler.");
+	handler = function(req, res) {
+		songCollection.findOne({_id : songID}, function(err, song) {
+			if (err) throw err; 
+			console.log("Rendering song.jade");
+			res.render("song.jade", song);
+		});
+	}
+	return handler;
+}
+
+exports.connectToDBs = connectToDBs;
 exports.index = index;
 exports.search = search;
 exports.song = song;
-
+exports.getSongs = getSongs;
+exports.makeSongHandler = makeSongHandler;

@@ -5,7 +5,7 @@ block content
   ul
     each result in results
       li
-        a(href=result) #{result.title}
+        a(href=result._id) #{result.title}
   form(action="/", method="get")
     button(type="submit") Back
   p

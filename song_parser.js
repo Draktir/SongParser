@@ -33,10 +33,10 @@ var mc = require('mongodb').MongoClient; //need to: npm install mongodb
 var Set = require('./set.js'); 
 var set = new Set();
 
-
-var inputFilePath = "songs/sample_songs.txt";
+// TODO: allow parsing of different file types (.xml)?
+//var inputFilePath = "songs/sample_songs.txt";
 //var inputFilePath = "songs/sample_songs2.txt";
-//var inputFilePath = "songs/1200iRealBookJazz_rev2.txt";
+var inputFilePath = "songs/1200iRealBookJazz_rev2.txt";
 var outputFilePath = "songs/output.txt";
 
 //parsing modes
@@ -47,8 +47,7 @@ TITLE: 1,   //parsing title of song
 COMPOSER: 2, //parsing composer of song
 STYLE: 3,  //parsing style of song
 KEY: 4,  //parsing musical key of song
-TIME_SIGNATURE: 5,     //place holder, no parsing
-
+N: 5,     //place holder, no parsing
 SONGDATA: 6 //parsing song chord data
 };
 
@@ -81,33 +80,34 @@ fs.readFile(inputFilePath , function(err, data) {
   
 	function setMode(newMode){
 		//now leaving mode
-		if(mode === MODES.TITLE){ 
-		   currentSong.title = parseDataString;
+		if (mode === MODES.TITLE){ 
+			currentSong.title = parseDataString;
 		}
-		else if(mode === MODES.COMPOSER) {
-		   currentSong.composer = parseDataString;
+		else if (mode === MODES.COMPOSER) {
+			currentSong.composer = parseDataString;
 		}
-		else if(mode === MODES.STYLE) {
-		   currentSong.style = parseDataString;
+		else if (mode === MODES.STYLE) {
+			currentSong.style = parseDataString;
 		}
-		else if(mode === MODES.KEY) {
-		   currentSong.key = parseDataString;
+		else if (mode === MODES.KEY) {
+			currentSong.key = parseDataString;
 		}
-		else if(mode === MODES.SONGDATA) {
-		   currentSong.songData = parseDataString;
-		   currentSong.rawSongData = rawSongDataString;
+		else if (mode === MODES.SONGDATA) {
+			numberOfBars = 0;
+			currentSong.songData = parseDataString;
+			currentSong.rawSongData = rawSongDataString;
 		}
 		
-		  //now entering mode
-		if(newMode === MODES.SONGDATA) {
-			currentSong['bar' + numberOfBars] = []; //assume the song has at least 1 bar
+		//now entering mode
+		if (newMode === MODES.SONGDATA) {
+			currentSong['bar' + numberOfBars] = []; // starting at bar 0
 		}
-		else if(newMode === MODES.TITLE) {
-			if(!isEmptyObject(currentSong))
+		else if (newMode === MODES.TITLE) {
+			if (!isEmptyObject(currentSong))
 				songsArray.push(currentSong);
 			currentSong = {}; //make new empty song;
-
 		}
+		
 		mode = newMode;
 		parseDataString = ""; 
 		rawSongDataString = "";
@@ -140,21 +140,71 @@ fs.readFile(inputFilePath , function(err, data) {
 		else if ((mode === MODES.SONGDATA) && isBarLine(fileDataString.charAt(i))) {
 			if (currentBar === null) {
 				currentBar = {}; 
-				if(fileDataString.charAt(i) === "[") currentBar.leftDoubleBarLine = "leftDoubleBarLine";
-				if(fileDataString.charAt(i) === "{") currentBar.leftRepeat = "leftRepeat";
+				if (fileDataString.charAt(i) === "[") currentBar.leftDoubleBarLine = true;
+				if (fileDataString.charAt(i) === "{") currentBar.leftRepeat = true;
 			}
 			else {
-				currentBar.chords = parseDataString;
-				currentSong.bars.push(currentBar);
-				
-				if(fileDataString.charAt(i) === "]") currentBar.rightDoubleBarLine = "rightDoubleBarLine";
-				if(fileDataString.charAt(i) === "}") currentBar.rightRepeat = "rightRepeat";
-				if(fileDataString.charAt(i) === "Z") currentBar.finalBarLine = "finalBarLine";
+				var section = parseDataString.indexOf("*");
+				var time = parseDataString.indexOf("T");
+				var ending = parseDataString.indexOf("N");
+				var repeatOne = parseDataString.indexOf("x");
+				var repeatTwo = parseDataString.indexOf("r");
+				var coda = parseDataString.indexOf("Q");
+				var segno = parseDataString.indexOf("S");
 
-				if(fileDataString.charAt(i) === "]") currentBar = null;
-				else if(fileDataString.charAt(i) === "}") currentBar = null;
-				else currentBar = {};
+				if (section != -1) {
+					currentBar.rehearsalLetter = parseDataString.charAt(section+1);									// should display [A]
+					parseDataString = parseDataString.replace("*", " ");
+					if (parseDataString.charAt(section+1).toLowerCase() === "i") currentBar.rehearsalLetter = "intro"; // special case for intro
+					parseDataString = parseDataString.replace(parseDataString.charAt(section+1), " ");
+				}
 				
+				if (time != -1)	{
+					currentBar.timeSignature = parseDataString.charAt(time+1) + '/' + parseDataString.charAt(time+2);	// should display 4/4
+					parseDataString = parseDataString.replace(parseDataString.charAt(time), " ");
+					parseDataString = parseDataString.replace(parseDataString.charAt(time+1), " ");
+					parseDataString = parseDataString.replace(parseDataString.charAt(time+2), " ");
+				}
+				
+				if (ending != -1) {
+					if (parseDataString.charAt(ending+1) === "1") currentBar.firstEnding = true;						// should display (1.		
+					else if (parseDataString.charAt(ending+1) === "2") currentBar.secondEnding = true;				// should display (2.
+					else if (parseDataString.charAt(ending+1) === "3") currentBar.thirdEnding = true;					// should display (3.
+					parseDataString = parseDataString.replace(parseDataString.charAt(ending), " ");
+					parseDataString = parseDataString.replace(parseDataString.charAt(ending+1), " ");
+				}
+				
+				// TODO: add leftSingleBarLine if necessary
+				// TODO: add parsing for no chords in a bar (nc)
+				
+				if (repeatOne != -1) { 
+					currentBar.oneRepeat = true;
+					parseDataString = parseDataString.replace(parseDataString.charAt(repeatOne), "%");
+				}
+				
+				if (repeatTwo != -1) { 
+					currentBar.twoRepeat = true;
+					parseDataString = parseDataString.replace(parseDataString.charAt(repeatTwo), "%2");
+				}
+				
+				if (coda != -1) {
+					currentBar.coda = true;
+				}
+				if (segno != -1) currentBar.segno = true;
+				
+				currentBar.chords = parseDataString.trim(); // may need to be moved
+				currentSong['bar' + numberOfBars] = currentBar; // may need to be moved
+				
+				if (fileDataString.charAt(i) === "]") currentBar.rightDoubleBarLine = true;
+				if (fileDataString.charAt(i) === "|") currentBar.rightSingleBarLine = true;
+				if (fileDataString.charAt(i) === "}") currentBar.rightRepeat = true;
+				if (fileDataString.charAt(i) === "Z") currentBar.finalBarLine = true;
+				
+				if (fileDataString.charAt(i) === "]") currentBar = null;
+				else if (fileDataString.charAt(i) === "}") currentBar = null;
+				else currentBar = {};
+			
+				numberOfBars++;
 				parseDataString = "";
 			}
 			rawSongDataString = rawSongDataString + fileDataString.charAt(i);
