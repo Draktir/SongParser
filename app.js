@@ -31,18 +31,16 @@ if ('development' == app.get('env')) {
 var createLinkHandlers = function() {
 	routes.getSongs().toArray(function(err, docs) {
 		if (err) throw err;
-		for (var i = 0; i < docs.length; i++) {
-			console.log("Creating song: " + docs[i]['title']);
+		console.log(docs);
 			// TODO: create link
-		}
 	});
 }
-
-routes.connectToDBs(createLinkHandlers);
 
 app.get('/', routes.index);
 app.post('/search', routes.search);
 app.post('/song', routes.song);
+
+//routes.connectToDBs(createLinkHandlers);
 
 http.createServer(app).listen(app.get('port'), function(){
   console.log('Express server listening on port ' + app.get('port') +

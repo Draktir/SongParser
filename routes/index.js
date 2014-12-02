@@ -1,5 +1,5 @@
 var MongoClient = require('mongodb').MongoClient;
-var Server = require('mongodb').Server;
+//var Server = require('mongodb').Server;
 var songCollection;
 var searchQuery;
 var searchFilter;
@@ -7,9 +7,10 @@ var searchResults; // cursor
 var idArray = [];
 var resultArray = [];
 
-function connectToDBs(callback) {
+var connectToDBs = function(callback) {
 	MongoClient.connect('mongodb://localhost/iRealSongs/', function(err, db) {
 		if (err) throw err;
+		console.log("Connected to Database.");
 		songColletion = db.collection('songs');
 		callback();
 	});
@@ -32,7 +33,7 @@ function search(req, res) {
 			MongoClient.connect('mongodb://localhost/iRealSongs/', function(err, db) {
 				if (err) throw err;
 				console.log("Connected to Database.");
-				songCollection = db.collection('songs');
+				songColletion = db.collection('songs');
 				songCollection.find(query, function(err, cursor) {
 					cursor.each(function(err, doc) {
 						if (doc == null) {
@@ -46,13 +47,12 @@ function search(req, res) {
 						}
 					});
 				});
-			});
+			});			
 		}
 		else if (searchFilter == 2) {
 			query = {composer: req.body.query}; // hard code for testing
 			MongoClient.connect('mongodb://localhost/iRealSongs/', function(err, db) {
 				if (err) throw err;
-				console.log("Connected to Database.");
 				songCollection = db.collection('songs');
 				songCollection.find(query, function(err, cursor) {
 					cursor.each(function(err, doc) {
@@ -72,9 +72,6 @@ function search(req, res) {
 		else if (searchFilter == 3) { // Style
 			query = {style: req.body.query}; // hard code for testing
 			MongoClient.connect('mongodb://localhost/iRealSongs/', function(err, db) {
-				if (err) throw err;
-				console.log("Connected to Database.");
-				songCollection = db.collection('songs');
 				songCollection.find(query, function(err, cursor) {
 					cursor.each(function(err, doc) {
 						if (doc == null) {
@@ -96,9 +93,6 @@ function search(req, res) {
 	}
 	else { // display all TODO: limit to 12/page
 		MongoClient.connect('mongodb://localhost/iRealSongs/', function(err, db) {
-			if (err) throw err;
-			console.log("Connected to Database.");
-			songCollection = db.collection('songs');
 			songCollection.find(function(err, cursor) {
 				cursor.each(function(err, doc) {
 					if (doc == null) {
@@ -122,31 +116,17 @@ function song(req, res) {
 
 function getSongs() {
 	MongoClient.connect('mongodb://localhost/iRealSongs/', function(err, db) {
-		if (err) throw err;
-		songCollection = db.collection('songs');
-		cursor = songCollection.find();
-		cursor.each(function(err, doc) {
-			if (doc == null) return idArray;
-			idArray.push(doc['_id']);
+		songCollection.find(function(err, cursor) {
+			cursor.each(function(err, doc) {
+				if (doc == null) return idArray;
+				idArray.push(doc['_id']);
+			});
 		});
 	});
 }
 
-function makeSongHandler(songID) {
-	console.log("Creating handler.");
-	handler = function(req, res) {
-		songCollection.findOne({_id : songID}, function(err, song) {
-			if (err) throw err; 
-			console.log("Rendering song.jade");
-			res.render("song.jade", song);
-		});
-	}
-	return handler;
-}
-
-exports.connectToDBs = connectToDBs;
 exports.index = index;
 exports.search = search;
 exports.song = song;
 exports.getSongs = getSongs;
-exports.makeSongHandler = makeSongHandler;
+exports.connectToDBs = connectToDBs;
